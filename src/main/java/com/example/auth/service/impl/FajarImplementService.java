@@ -6,14 +6,22 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import javax.management.relation.Role;
+
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.stereotype.Service;
 
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
+
+import com.example.auth.config.MyUserDetails;
+import com.example.auth.dto.LoginRequest;
 import com.example.auth.dto.RequestAmartek;
 import com.example.auth.handler.CustomResponse;
 import com.example.auth.model.Amartek;
@@ -26,13 +34,20 @@ import com.example.auth.repository.TrAmartekRepository;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.service.FajarService;
 import com.example.auth.service.SendEmailService;
-
+import com.example.auth.utils.GeneratePassword;
 import jakarta.mail.MessagingException;
+
 
 @Service
 public class FajarImplementService implements FajarService {
+    @Autowired
+    private MyUserDetails myUserDetails;
 
-  
+    @Autowired
+    private AuthenticationManager authenticationManager;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+   
     @Autowired
     private AmartekRepository amartekRepository;
     @Autowired
@@ -77,9 +92,9 @@ public class FajarImplementService implements FajarService {
         if (result) {
             String randomCode = UUID.randomUUID().toString();
             User user = new User();
-           com.example.auth.model.Role role = roleRepository.findRole(requestAmartek.getRole());
+            com.example.auth.model.Role role = roleRepository.findRole(requestAmartek.getRole());
             user.setId(amartek.getId());
-            user.setPassword(requestAmartek.getPassword());
+            user.setPassword(passwordEncoder.encode(requestAmartek.getPassword()));
             user.setStatus("nonAktif");
             user.setVerificationCode(randomCode);
             userRepository.save(user);
@@ -101,6 +116,46 @@ public class FajarImplementService implements FajarService {
         }
 
         return CustomResponse.generate(HttpStatus.BAD_REQUEST, "Register Failed");
+    }
+
+    @Override
+    public ResponseEntity<Object> getFormChangePassword() throws MessagingException {
+        User user = userRepository.findUserByEmail("frizky861@gmail.com");
+
+        if (user == null) {
+            return CustomResponse.generate(HttpStatus.OK, "account not found");
+        }
+
+        RequestAmartek requestAmartek = new RequestAmartek();
+
+        requestAmartek.setName(user.getAmartek().getName());
+        requestAmartek.setEmail(user.getAmartek().getEmail());
+        String randomCode = UUID.randomUUID().toString();
+
+        // userRepository.save(null);
+
+        sendEmailService.getFormChangePassword(requestAmartek, randomCode);
+
+        return CustomResponse.generate(HttpStatus.OK, "Success view form Change Password");
+    }
+
+    @Override
+    public ResponseEntity<Object> forgotPassword(RequestAmartek requestAmartek) throws MessagingException {
+        User user = userRepository.findUserByEmail(requestAmartek.getEmail());
+
+        String pw = GeneratePassword.generateRandomPassword();
+        System.out.println("ini password baru" + pw);
+
+        user.setPassword(passwordEncoder.encode(pw));
+
+        userRepository.save(user);
+
+        requestAmartek.setName(user.getAmartek().getName());
+        requestAmartek.setPassword(user.getPassword());
+
+        sendEmailService.forgotPassword(requestAmartek);
+
+        return CustomResponse.generate(HttpStatus.OK, "success send email");
     }
 
     @Override
@@ -150,4 +205,17 @@ public class FajarImplementService implements FajarService {
         return CustomResponse.generate(HttpStatus.OK, "success", response);
     }
 
+    @Override
+    public ResponseEntity<Object> loginUser(LoginRequest loginRequest) {
+
+        try {
+            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            UserDetails userDetails = myUserDetails.loadUserByUsername(loginRequest.getEmail());
+
+            return CustomResponse.generate(HttpStatus.OK, "login success",userDetails);
+        } catch (Exception e) {
+            return CustomResponse.generate(HttpStatus.BAD_REQUEST, "Login Failed", null);
+        }
+    }
 }

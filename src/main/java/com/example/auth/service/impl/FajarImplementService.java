@@ -151,7 +151,7 @@ public class FajarImplementService implements FajarService {
         userRepository.save(user);
 
         requestAmartek.setName(user.getAmartek().getName());
-        requestAmartek.setPassword(user.getPassword());
+        requestAmartek.setPassword(pw);
 
         sendEmailService.forgotPassword(requestAmartek);
 

@@ -64,7 +64,7 @@ public class SendEmailVerification implements SendEmailService {
     context.setVariable("name", requestAmartek.getName());
     context.setVariable("password", requestAmartek.getPassword());
 
-    String buildMail = templateEngine.process("auth/form-change-password.html", context);
+    String buildMail = templateEngine.process("auth/forgot-password.html", context);
     sendVerificationEmail(requestAmartek, buildMail, subject);
   }
 

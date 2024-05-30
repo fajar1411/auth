@@ -24,13 +24,15 @@ public class SendEmailVerification implements SendEmailService {
   @Value("${application.localhost}")
   private String localhost;
 
+  // Context  menyimpan data yang akan digunakan dalam proses rendering template
+//  templateEngine.process untuk memproses template html berdasarkan context yang di buat
   @Override
   public void confirmRegister(RequestAmartek requestAmartek, String token) throws MessagingException {
-    String link = String.format("%s/api/auth/confirm?token=%s", localhost, token);
+    String link = String.format("%sapi/auth/confirm?token=%s", localhost, token);
     String subject = "Confirm your account";
 
     System.out.println(link + " ini link");
-    // ganti isi html
+  
     Context context = new Context();
     context.setVariable("name", requestAmartek.getName());
     context.setVariable("link", link);
@@ -41,16 +43,15 @@ public class SendEmailVerification implements SendEmailService {
 
   @Override
   public void getFormChangePassword(RequestAmartek requestAmartek, String token) throws MessagingException {
-    String link = String.format("%s/form-change-password", localhost);
+    String link = String.format("%sapi/auth/form-change-password/%s", localhost, token);
     String subject = "Form Change Password";
 
-    // ganti isi html
+
     Context context = new Context();
     context.setVariable("name", requestAmartek.getName());
-    context.setVariable("code", token);
     context.setVariable("link", link);
 
-    String buildMail = templateEngine.process("auth/form-change-password.html", context);
+    String buildMail = templateEngine.process("auth/change-password.html", context);
     sendVerificationEmail(requestAmartek, buildMail, subject);
   }
 
@@ -59,7 +60,7 @@ public class SendEmailVerification implements SendEmailService {
 
     String subject = "New Your Password";
 
-    // ganti isi html
+
     Context context = new Context();
     context.setVariable("name", requestAmartek.getName());
     context.setVariable("password", requestAmartek.getPassword());

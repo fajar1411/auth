@@ -19,14 +19,14 @@ public class MyUserDetails implements UserDetails, UserDetailsService {
 
     private String username;
     private String password;
-    private String name;
-    public String getName() {
-        return name;
-    }
+    // private String name;
+    // public String getName() {
+    //     return name;
+    // }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    // public void setName(String name) {
+    //     this.name = name;
+    // }
 
     private GrantedAuthority authority;
     
@@ -36,10 +36,9 @@ public class MyUserDetails implements UserDetails, UserDetailsService {
     public MyUserDetails() {
     }
 
-    public MyUserDetails(String username, String password,String name, String authority) {
+    public MyUserDetails(String username, String password, String authority) {
         this.username = username;
         this.password = password;
-        this.name = name;
         this.authority = new SimpleGrantedAuthority(authority);
     }
 

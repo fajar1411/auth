@@ -6,8 +6,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.security.core.Authentication;
 
+import com.example.auth.config.JwtTokenUtil;
 import com.example.auth.config.MyUserDetails;
 import com.example.auth.dto.LoginRequest;
 import com.example.auth.dto.RequestAmartek;
@@ -37,9 +36,12 @@ import com.example.auth.service.SendEmailService;
 import com.example.auth.utils.GeneratePassword;
 import jakarta.mail.MessagingException;
 
+import jakarta.servlet.http.HttpServletRequest;
 
 @Service
 public class FajarImplementService implements FajarService {
+    @Autowired
+    private HttpServletRequest request;
     @Autowired
     private MyUserDetails myUserDetails;
 
@@ -47,19 +49,41 @@ public class FajarImplementService implements FajarService {
     private AuthenticationManager authenticationManager;
     @Autowired
     private PasswordEncoder passwordEncoder;
-   
+
     @Autowired
     private AmartekRepository amartekRepository;
     @Autowired
     private UserRepository userRepository;
     @Autowired
     private TrAmartekRepository trAmartekRepository;
-
+    @Autowired
+    private JwtTokenUtil jwtTokenUtil;
     @Autowired
     private RoleRepository roleRepository;
 
     @Autowired
     private SendEmailService sendEmailService;
+
+    @Override
+    public ResponseEntity<Object> loginUser(LoginRequest loginRequest) {
+
+        try {
+
+            Authentication authentication = authenticationManager
+                    .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(),
+                            loginRequest.getPassword()));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            UserDetails userDetails = myUserDetails.loadUserByUsername(loginRequest.getEmail());
+
+            final String token = jwtTokenUtil.generateToken(userDetails);
+            final String refreshToken = jwtTokenUtil.refreshToken(token, userDetails);
+            
+
+            return CustomResponse.generate(HttpStatus.OK, "Login Sukses", token,refreshToken, null);
+        } catch (Exception e) {
+            return CustomResponse.generate(HttpStatus.BAD_REQUEST, "Login Failed", null);
+        }
+    }
 
     @Override
     public ResponseEntity<Object> createdData(RequestAmartek requestAmartek, String siteUrl) throws MessagingException {
@@ -120,7 +144,13 @@ public class FajarImplementService implements FajarService {
 
     @Override
     public ResponseEntity<Object> getFormChangePassword() throws MessagingException {
-        User user = userRepository.findUserByEmail("frizky861@gmail.com");
+        final String requestTokenHeader = request.getHeader("Authorization");
+        
+        String jwtToken = requestTokenHeader.substring(7);
+        String username = jwtTokenUtil.getUsernameFromToken(jwtToken);
+        User user = userRepository.findUserByEmail(username);
+
+ 
 
         if (user == null) {
             return CustomResponse.generate(HttpStatus.OK, "account not found");
@@ -131,8 +161,8 @@ public class FajarImplementService implements FajarService {
         requestAmartek.setName(user.getAmartek().getName());
         requestAmartek.setEmail(user.getAmartek().getEmail());
         String randomCode = UUID.randomUUID().toString();
-
-        // userRepository.save(null);
+        user.setVerificationCode(randomCode);
+        userRepository.save(user);
 
         sendEmailService.getFormChangePassword(requestAmartek, randomCode);
 
@@ -206,16 +236,24 @@ public class FajarImplementService implements FajarService {
     }
 
     @Override
-    public ResponseEntity<Object> loginUser(LoginRequest loginRequest) {
+    public String refreshToken(String token) {
+        String username = jwtTokenUtil.getUsernameFromToken(token);
+        UserDetails userDetails = myUserDetails.loadUserByUsername(username);
+        String tokenUtama = null;
+        String refreshToken = null;
+        if (userDetails.getUsername().equals(username)) {
+            if (jwtTokenUtil.validateToken(token, userDetails)) {
+                refreshToken = jwtTokenUtil.refreshToken(token, userDetails);
+                return refreshToken;
+            }
 
-        try {
-            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            UserDetails userDetails = myUserDetails.loadUserByUsername(loginRequest.getEmail());
-
-            return CustomResponse.generate(HttpStatus.OK, "login success",userDetails);
-        } catch (Exception e) {
-            return CustomResponse.generate(HttpStatus.BAD_REQUEST, "Login Failed", null);
+            if (jwtTokenUtil.isTokenExpired(refreshToken)) {
+                tokenUtama = jwtTokenUtil.generateToken(userDetails);
+                return tokenUtama;
+            }
         }
+        return "";
     }
+
+    
 }

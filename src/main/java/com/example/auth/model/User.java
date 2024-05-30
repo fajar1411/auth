@@ -30,7 +30,18 @@ public class User {
     @Column(name = "verification_code")
     private String verificationCode;
 
-       @JsonIgnore
+    @Column(name = "token")
+    private String tokenJwt;
+
+    public String getTokenJwt() {
+        return tokenJwt;
+    }
+
+    public void setTokenJwt(String tokenJwt) {
+        this.tokenJwt = tokenJwt;
+    }
+
+    @JsonIgnore
     @OneToMany(mappedBy = "user")
     private Set<TrAmartek> trAmarteks;
 
@@ -85,5 +96,4 @@ public class User {
     public User() {
     }
 
-    
 }

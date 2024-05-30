@@ -13,7 +13,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     // User u JOIN u.trAmarteks tr JOIN u.amartek a JOIN tr.role r WHERE a.email = ?1")
     // public UserDetails authenticate(String email);
 
-    @Query(value = "SELECT new com.example.auth.config.MyUserDetails(a.email, u.password, a.name, r.name) FROM User u JOIN u.trAmarteks tr JOIN u.amartek a JOIN tr.role r WHERE a.email = ?1")
+    @Query("SELECT new com.example.auth.config.MyUserDetails(a.email, u.password, r.name) FROM User u JOIN u.trAmarteks tr JOIN u.amartek a JOIN tr.role r WHERE a.email = ?1")
     public UserDetails authenticate(String email);
     
     @Query(value = "SELECT u from User u where u.verificationCode = ?1")
